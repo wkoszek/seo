@@ -1,0 +1,12 @@
+[project]
+name = "seo-tool"
+version = "1.0.0"
+description = "SEO Tool for Google Search Console integration and sitemap crawling"
+requires-python = ">=3.12"
+dependencies = [
+    "google-api-python-client>=2.100.0",
+    "google-auth-oauthlib>=1.1.0",
+    "google-auth>=2.23.0",
+    "pandas>=2.0.0",
+    "httpx>=0.25.0",
+]

@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""
+SEO Tool for Bay Area Polish Group
+
+Commands:
+    seo init      Set up Google Cloud credentials
+    seo auth      Authenticate with Google
+    seo status    Check configuration
+    seo sites     List verified sites
+    seo fetch     Fetch raw GSC data to disk
+    seo render    Render reports from fetched data
+    seo ping      Ping Google with all sitemaps
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+# Add script directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+from seo_common import REPORTS_DIR
+
+
+def main():
+    parser = argparse.ArgumentParser(description="SEO Tool")
+    sub = parser.add_subparsers(dest="cmd")
+
+    # init
+    sub.add_parser("init", help="Set up Google Cloud credentials")
+
+    # auth
+    p = sub.add_parser("auth", help="Authenticate with Google")
+    p.add_argument("--force", action="store_true", help="Force re-authentication")
+
+    # status
+    sub.add_parser("status", help="Check configuration")
+
+    # sites
+    sub.add_parser("sites", help="List verified sites")
+
+    # fetch (was: report)
+    p = sub.add_parser("fetch", help="Fetch raw GSC data to disk")
+    p.add_argument("--days", type=int, default=30, help="Days to analyze (default: 30)")
+    p.add_argument("--full", action="store_true", help="Inspect all URLs (slow, run overnight)")
+    p.add_argument("--output", default=str(REPORTS_DIR), help="Output directory")
+
+    # render (was: inspect)
+    p = sub.add_parser("render", help="Render reports from fetched data")
+    p.add_argument("--data", help="Data directory (default: latest fetch)")
+    p.add_argument("--verbose", "-v", action="store_true", help="Show all URLs")
+
+    # ping
+    sub.add_parser("ping", help="Ping Google with all sitemaps")
+
+    args = parser.parse_args()
+
+    if not args.cmd:
+        parser.print_help()
+        print("\nCommands:")
+        print("  seo init      Set up Google Cloud credentials")
+        print("  seo auth      Authenticate with Google")
+        print("  seo status    Check configuration")
+        print("  seo sites     List verified sites")
+        print("  seo fetch     Fetch raw GSC data to disk")
+        print("  seo render    Render reports from fetched data")
+        print("  seo ping      Ping Google with all sitemaps")
+        return 0
+
+    # Import and run command
+    if args.cmd == "init":
+        from seo_init import cmd_init
+        return cmd_init(args)
+    elif args.cmd == "auth":
+        from seo_auth import cmd_auth
+        return cmd_auth(args)
+    elif args.cmd == "status":
+        from seo_status import cmd_status
+        return cmd_status(args)
+    elif args.cmd == "sites":
+        from seo_sites import cmd_sites
+        return cmd_sites(args)
+    elif args.cmd == "fetch":
+        from seo_fetch import cmd_fetch
+        return cmd_fetch(args)
+    elif args.cmd == "render":
+        from seo_render import cmd_render
+        return cmd_render(args)
+    elif args.cmd == "ping":
+        from seo_ping import cmd_ping
+        return cmd_ping(args)
+
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

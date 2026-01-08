@@ -1,0 +1,34 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Credentials and secrets (DO NOT COMMIT)
+client_secrets.json
+token.json
+*.json.bak
+
+# Lock files (regenerated)
+uv.lock
+
+# Generated reports
+reports/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
