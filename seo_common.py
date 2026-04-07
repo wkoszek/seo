@@ -5,9 +5,12 @@ from pathlib import Path
 
 # Configuration
 SCRIPT_DIR = Path(__file__).parent
-CLIENT_SECRETS_FILE = SCRIPT_DIR / "client_secrets.json"
-TOKEN_FILE = SCRIPT_DIR / "token.json"
-REPORTS_DIR = SCRIPT_DIR.parent.parent / "reports" / "seo"
+CWD = Path.cwd()
+
+# Credentials stored in current working directory (per-project)
+CLIENT_SECRETS_FILE = CWD / ".client_secrets.json"
+TOKEN_FILE = CWD / ".token.json"
+REPORTS_DIR = CWD / "reports" / "seo"
 SCOPES = ["https://www.googleapis.com/auth/webmasters"]  # Full access for sitemap submission
 
 # Site configuration

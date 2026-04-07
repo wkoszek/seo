@@ -9,6 +9,7 @@ Commands:
     seo sites     List verified sites
     seo fetch     Fetch raw GSC data to disk
     seo render    Render reports from fetched data
+    seo suggest   Suggest new pages to create
     seo ping      Ping Google with all sitemaps
 """
 
@@ -50,6 +51,12 @@ def main():
     p.add_argument("--data", help="Data directory (default: latest fetch)")
     p.add_argument("--verbose", "-v", action="store_true", help="Show all URLs")
 
+    # suggest
+    p = sub.add_parser("suggest", help="Suggest new pages to create from GSC data")
+    p.add_argument("--data", help="Data directory (default: latest fetch)")
+    p.add_argument("--min-impressions", type=int, default=50, dest="min_impressions",
+                   help="Minimum impressions threshold (default: 50)")
+
     # ping
     sub.add_parser("ping", help="Ping Google with all sitemaps")
 
@@ -64,6 +71,7 @@ def main():
         print("  seo sites     List verified sites")
         print("  seo fetch     Fetch raw GSC data to disk")
         print("  seo render    Render reports from fetched data")
+        print("  seo suggest   Suggest new pages to create")
         print("  seo ping      Ping Google with all sitemaps")
         return 0
 
@@ -86,6 +94,9 @@ def main():
     elif args.cmd == "render":
         from seo_render import cmd_render
         return cmd_render(args)
+    elif args.cmd == "suggest":
+        from seo_suggest import cmd_suggest
+        return cmd_suggest(args)
     elif args.cmd == "ping":
         from seo_ping import cmd_ping
         return cmd_ping(args)
