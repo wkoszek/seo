@@ -11,7 +11,10 @@ CWD = Path.cwd()
 CLIENT_SECRETS_FILE = CWD / ".client_secrets.json"
 TOKEN_FILE = CWD / ".token.json"
 REPORTS_DIR = CWD / "reports" / "seo"
-SCOPES = ["https://www.googleapis.com/auth/webmasters"]  # Full access for sitemap submission
+SCOPES = [
+    "https://www.googleapis.com/auth/webmasters",       # Search Console
+    "https://www.googleapis.com/auth/analytics.edit",   # GA Admin API (create properties)
+]
 
 # Site configuration
 SITE_URL = "sc-domain:bayareapolishgroup.com"
@@ -81,19 +84,90 @@ def check_dependencies():
     return True
 
 
+OP_CLIENT_SECRETS_REF = "op://dev/seo-google-client-secrets/json"
+OP_TOKEN_REF = "op://dev/seo-google-token/json"
+
+
+def _load_client_secrets_file():
+    """Return path to client secrets, sourcing from envvar or 1Password if needed."""
+    import os, subprocess, tempfile
+
+    # Already exists locally
+    if CLIENT_SECRETS_FILE.exists():
+        return CLIENT_SECRETS_FILE
+
+    # Env var: can be a file path or raw JSON
+    env_val = os.environ.get("GOOGLE_CLIENT_SECRETS", "")
+    if env_val:
+        p = Path(env_val)
+        if p.exists():
+            return p
+        # Treat as raw JSON — write to temp file
+        tmp = Path(tempfile.mktemp(suffix=".json"))
+        tmp.write_text(env_val)
+        return tmp
+
+    # 1Password
+    try:
+        result = subprocess.run(
+            ["op", "read", OP_CLIENT_SECRETS_REF],
+            capture_output=True, text=True, check=True
+        )
+        tmp = Path(tempfile.mktemp(suffix=".json"))
+        tmp.write_text(result.stdout.strip())
+        return tmp
+    except Exception:
+        pass
+
+    return None
+
+
+def _load_token_file():
+    """Return path to token file, sourcing from 1Password if needed."""
+    import os, subprocess, tempfile
+
+    if TOKEN_FILE.exists():
+        return TOKEN_FILE
+
+    env_val = os.environ.get("GOOGLE_TOKEN_JSON", "")
+    if env_val:
+        tmp = Path(tempfile.mktemp(suffix=".json"))
+        tmp.write_text(env_val)
+        return tmp
+
+    try:
+        result = subprocess.run(
+            ["op", "read", OP_TOKEN_REF],
+            capture_output=True, text=True, check=True
+        )
+        tmp = Path(tempfile.mktemp(suffix=".json"))
+        tmp.write_text(result.stdout.strip())
+        return tmp
+    except Exception:
+        pass
+
+    return None
+
+
 def get_credentials():
     """Get valid credentials."""
-    if not CLIENT_SECRETS_FILE.exists():
-        print_error("Run 'seo init' first.")
+    secrets_file = _load_client_secrets_file()
+    if not secrets_file:
+        print_error("No client secrets found. Options:")
+        print_error("  1. Run 'seo init' to set up .client_secrets.json")
+        print_error("  2. Set GOOGLE_CLIENT_SECRETS env var (path or JSON)")
+        print_error(f"  3. Store in 1Password at {OP_CLIENT_SECRETS_REF}")
         return None
-    if not TOKEN_FILE.exists():
-        print_error("Run 'seo auth' first.")
+
+    token_file = _load_token_file()
+    if not token_file:
+        print_error("No token found. Run 'seo auth' first.")
         return None
 
     from google.oauth2.credentials import Credentials
     from google.auth.transport.requests import Request
 
-    creds = Credentials.from_authorized_user_file(str(TOKEN_FILE), SCOPES)
+    creds = Credentials.from_authorized_user_file(str(token_file), SCOPES)
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())

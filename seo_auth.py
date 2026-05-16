@@ -2,7 +2,8 @@
 
 from seo_common import (
     CLIENT_SECRETS_FILE, TOKEN_FILE, SCOPES,
-    check_dependencies, print_header, print_success, print_error, print_info
+    check_dependencies, print_header, print_success, print_error, print_info,
+    _load_client_secrets_file
 )
 
 
@@ -17,9 +18,11 @@ def cmd_auth(args):
 
     print_header("SEO Tool - Authentication")
 
-    if not CLIENT_SECRETS_FILE.exists():
-        print_error("No credentials found. Run 'seo init' first.")
+    secrets_file = _load_client_secrets_file()
+    if not secrets_file:
+        print_error("No credentials found. Run 'seo init' first, or set GOOGLE_CLIENT_SECRETS.")
         return 1
+    CLIENT_SECRETS_FILE_RESOLVED = secrets_file
 
     if TOKEN_FILE.exists() and not args.force:
         try:
@@ -37,7 +40,7 @@ def cmd_auth(args):
             pass
 
     print_info("Opening browser for authentication...")
-    flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE), SCOPES)
+    flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE_RESOLVED), SCOPES)
     creds = flow.run_local_server(port=8080)
     with open(TOKEN_FILE, "w") as f:
         f.write(creds.to_json())

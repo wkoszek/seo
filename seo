@@ -60,6 +60,31 @@ def main():
     # ping
     sub.add_parser("ping", help="Ping Google with all sitemaps")
 
+    # indexnow
+    p = sub.add_parser("indexnow", help="Generate / show the shared IndexNow key")
+    p.add_argument("--force", action="store_true", help="Regenerate even if key exists")
+
+    # sitemap
+    p = sub.add_parser("sitemap", help="Submit sitemap to Google Search Console")
+    p.add_argument("domain", help="Domain to submit sitemap for (e.g. rustjob.com)")
+    p.add_argument("--domain-property", action="store_true",
+                   help="Use sc-domain: property instead of URL-prefix")
+
+    # verify
+    p = sub.add_parser("verify", help="Verify site ownership and add to Search Console")
+    p.add_argument("domain", help="Domain to verify (e.g. rustjob.com)")
+    p.add_argument("--method", default="analytics",
+                   choices=["analytics", "dns", "file", "meta"],
+                   help="Verification method (default: analytics)")
+    p.add_argument("--confirm", action="store_true",
+                   help="Complete verification after placing the token")
+
+    # install
+    p = sub.add_parser("install", help="Create GA4 property and write gtag snippet")
+    p.add_argument("domain", help="Domain to install GA on (e.g. example.com)")
+    p.add_argument("--account", help="GA account ID (auto-detected if only one)")
+    p.add_argument("--output", default=".", help="Output directory for snippet file (default: .)")
+
     args = parser.parse_args()
 
     if not args.cmd:
@@ -73,6 +98,9 @@ def main():
         print("  seo render    Render reports from fetched data")
         print("  seo suggest   Suggest new pages to create")
         print("  seo ping      Ping Google with all sitemaps")
+        print("  seo sitemap   Submit sitemap to Google Search Console")
+        print("  seo verify    Verify site ownership and add to Search Console")
+        print("  seo install   Create GA4 property and write gtag snippet")
         return 0
 
     # Import and run command
@@ -100,6 +128,18 @@ def main():
     elif args.cmd == "ping":
         from seo_ping import cmd_ping
         return cmd_ping(args)
+    elif args.cmd == "indexnow":
+        from seo_indexnow import cmd_indexnow
+        return cmd_indexnow(args)
+    elif args.cmd == "sitemap":
+        from seo_sitemap import cmd_sitemap
+        return cmd_sitemap(args)
+    elif args.cmd == "verify":
+        from seo_verify import cmd_verify
+        return cmd_verify(args)
+    elif args.cmd == "install":
+        from seo_install import cmd_install
+        return cmd_install(args)
 
     return 1
 

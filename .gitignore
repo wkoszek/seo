@@ -10,7 +10,9 @@ __pycache__/
 
 # Credentials and secrets (DO NOT COMMIT)
 client_secrets.json
+.client_secrets.json
 token.json
+.token.json
 *.json.bak
 
 # Lock files (regenerated)

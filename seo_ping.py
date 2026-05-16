@@ -10,8 +10,10 @@ from seo_common import (
     print_header, print_success, print_error, print_info
 )
 
-# IndexNow key file location (in static/ so Hugo copies it to site root)
-INDEXNOW_KEY_FILE = SCRIPT_DIR.parent.parent / "static" / "indexnow-key.txt"
+# IndexNow key file location — shared across all sites we run. Each Hugo
+# site's build step copies it into the rendered output so `<key>.txt` is
+# served at the site root for verification.
+INDEXNOW_KEY_FILE = Path.home() / "Sync" / "static" / "indexnow-key.txt"
 
 
 def cmd_ping(args):
