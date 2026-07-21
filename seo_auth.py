@@ -42,6 +42,7 @@ def cmd_auth(args):
     print_info("Opening browser for authentication...")
     flow = InstalledAppFlow.from_client_secrets_file(str(CLIENT_SECRETS_FILE_RESOLVED), SCOPES)
     creds = flow.run_local_server(port=8080)
+    TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(TOKEN_FILE, "w") as f:
         f.write(creds.to_json())
     print_success("Authentication successful!")

@@ -58,6 +58,13 @@ def cmd_fetch(args):
     sitemaps_data = fetch_sitemaps(service)
     print(f"({len(sitemaps_data)} sitemaps)")
 
+    # Fetch GA4 analytics (users, sessions, pageviews)
+    from seo_ga4 import fetch_ga4
+    domain = SITE_URL.removeprefix("sc-domain:").removeprefix("https://").removeprefix("http://").rstrip("/")
+    print(f"  Fetching GA4 data...", end=" ", flush=True)
+    ga4_property = fetch_ga4(creds, domain, args.days, output_dir)
+    print(f"({ga4_property or 'skipped'})")
+
     # Inspect URLs for indexing status
     inspection_results = []
     gsc_dir = output_dir / "gsc"
@@ -126,6 +133,7 @@ def cmd_fetch(args):
         "days": args.days,
         "full": args.full,
         "site_url": SITE_URL,
+        "ga4_property": ga4_property,
         "pages_inspected": len(inspection_results),
         "total_pages": len(data.get("pages", [])),
     }

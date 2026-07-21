@@ -41,6 +41,13 @@ def cmd_render(args):
         else:
             data[name] = []
 
+    # Load GA4 data if fetched
+    ga4 = {}
+    ga4_file = data_dir / "ga4.json"
+    if ga4_file.exists():
+        with open(ga4_file) as f:
+            ga4 = json.load(f)
+
     # Load JSON inspection data for detailed analysis
     inspections_detailed = load_inspection_jsons(data_dir / "gsc")
 
@@ -54,7 +61,7 @@ def cmd_render(args):
 
     # Generate HTML report
     html_path = data_dir / "report.html"
-    generate_html_report(html_path, data, metadata)
+    generate_html_report(html_path, data, metadata, ga4)
     print()
     print_success(f"HTML report: {html_path}")
 
@@ -415,13 +422,76 @@ def print_url_table(inspections):
         print(f"  {line}")
 
 
-def generate_html_report(path, data, metadata):
+def generate_ga4_html(ga4):
+    """Generate the Google Analytics (GA4) section of the HTML report."""
+    if not ga4 or not ga4.get("totals", {}).get("rows"):
+        return ""
+
+    import html as html_mod
+    from seo_ga4 import rows as ga_rows
+
+    t = ga4["totals"]["rows"][0]["metricValues"]
+    users, new_users, sessions, pageviews = (int(t[i]["value"]) for i in range(4))
+    avg_session = float(t[4]["value"])
+    bounce = float(t[5]["value"])
+    engagement = float(t[6]["value"])
+
+    stats = ""
+    for label, value in [
+        ("Active Users", f"{users:,}"), ("New Users", f"{new_users:,}"),
+        ("Sessions", f"{sessions:,}"), ("Pageviews", f"{pageviews:,}"),
+        ("Avg Session", f"{avg_session:.0f}s"), ("Engagement", f"{engagement*100:.1f}%"),
+    ]:
+        stats += f'<div class="stat"><div class="stat-value ga4">{value}</div><div class="stat-label">{label}</div></div>'
+
+    daily = ga_rows(ga4.get("daily", {}))
+    trend = ""
+    if daily:
+        max_users = max(int(m[0]) for _, m in daily) or 1
+        trend = "<h2>GA4 Daily Active Users</h2><div class='trend-chart'>"
+        for dims, metrics in daily:
+            height = int(metrics[0]) / max_users * 100
+            trend += (f'<div class="trend-bar-wrapper"><div class="trend-bar ga4" style="height:{height:.0f}%"></div>'
+                      f'<div class="trend-label">{dims[0][4:6]}-{dims[0][6:8]}</div>'
+                      f'<div class="trend-value">{metrics[0]}</div></div>')
+        trend += "</div>"
+
+    def ga_table(name, headers):
+        report = ga4.get(name, {})
+        if not report.get("rows"):
+            return "<p>No data</p>"
+        out = "<table><thead><tr>" + "".join(f"<th>{h}</th>" for h in headers) + "</tr></thead><tbody>"
+        for dims, metrics in ga_rows(report):
+            cells = [html_mod.escape(dims[0])] + [f"{int(m):,}" for m in metrics]
+            out += "<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>"
+        return out + "</tbody></table>"
+
+    return f"""
+<h2>Google Analytics (GA4)</h2>
+<p class="ga4-meta">Property: {ga4.get("property", "")} · Bounce rate: {bounce*100:.1f}%</p>
+<div class="stats">{stats}</div>
+{trend}
+<div class="two-col">
+<div><h2>GA4 Channels</h2>{ga_table("channels", ["Channel", "Sessions", "Users"])}</div>
+<div><h2>GA4 Countries</h2>{ga_table("countries", ["Country", "Users", "Sessions"])}</div>
+</div>
+<div class="two-col">
+<div><h2>GA4 Devices</h2>{ga_table("devices", ["Device", "Users", "Sessions"])}</div>
+<div><h2>GA4 Top Pages</h2>{ga_table("pages", ["Page", "Views", "Users"])}</div>
+</div>
+"""
+
+
+def generate_html_report(path, data, metadata, ga4=None):
     """Generate HTML report from data."""
 
     def table(rows, cols):
         if not rows:
             return "<p>No data</p>"
-        h = "<table><thead><tr>" + "".join(f"<th>{c[1]}</th>" for c in cols) + "</tr></thead><tbody>"
+        h = "<table><thead><tr>" + "".join(
+            f"<th class='{c[2]}'>{c[1]}</th>" if c[2] else f"<th>{c[1]}</th>"
+            for c in cols
+        ) + "</tr></thead><tbody>"
         for row in rows:
             h += "<tr>" + "".join(f"<td class='{c[2]}'>{fmt(row.get(c[0]), c[0])}</td>" for c in cols) + "</tr>"
         return h + "</tbody></table>"
@@ -431,8 +501,8 @@ def generate_html_report(path, data, metadata):
             return f"{v*100:.2f}%" if v else ""
         if k == "position":
             return f"{v:.1f}" if v else ""
-        if isinstance(v, (int, float)) and k in ("clicks", "impressions", "submitted_count", "indexed_count"):
-            return f"{int(v):,}"
+        if k in ("clicks", "impressions", "submitted_count", "errors", "warnings"):
+            return f"{int(v):,}" if isinstance(v, (int, float)) else "0"
         return v if v else ""
 
     # Calculate summary stats
@@ -448,12 +518,13 @@ def generate_html_report(path, data, metadata):
     end_date = metadata.get("end_date", "")
 
     # Sitemaps section
+    # NOTE: GSC's Sitemaps API "indexed" field is deprecated and always returns 0,
+    # so it's omitted here. Real indexing data lives in the URL Inspection section.
     sitemaps_html = ""
     if data.get("sitemaps"):
         sitemaps_html = "<h2>Sitemap Status</h2>" + table(data["sitemaps"], [
             ("path", "Sitemap", "trunc"),
             ("submitted_count", "Submitted", "num"),
-            ("indexed_count", "Indexed", "num"),
             ("errors", "Errors", "num"),
         ])
 
@@ -545,6 +616,8 @@ def generate_html_report(path, data, metadata):
     # Top queries
     top_queries = sorted(data.get("queries", []), key=lambda x: x.get("clicks", 0), reverse=True)[:30]
 
+    ga4_html = generate_ga4_html(ga4)
+
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><title>SEO Report</title>
 <style>
@@ -593,6 +666,9 @@ td {{ padding: 10px; border-top: 1px solid #eee; }}
 .trend-value {{ font-size: 0.7em; color: #666; }}
 .two-col {{ display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }}
 @media (max-width: 768px) {{ .two-col {{ grid-template-columns: 1fr; }} }}
+.stat-value.ga4 {{ color: #1a73e8; }}
+.trend-bar.ga4 {{ background: linear-gradient(180deg, #1a73e8, #6fa8f5); }}
+.ga4-meta {{ color: #888; font-size: 0.85em; }}
 </style></head><body>
 <h1>SEO Report</h1>
 <p>{start_date} to {end_date}</p>
@@ -605,6 +681,7 @@ td {{ padding: 10px; border-top: 1px solid #eee; }}
 <div class="stat"><div class="stat-value">{total_queries:,}</div><div class="stat-label">Queries</div></div>
 </div>
 {trend_html}
+{ga4_html}
 {health_html}
 {sitemaps_html}
 <div class="two-col">

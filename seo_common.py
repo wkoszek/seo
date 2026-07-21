@@ -7,13 +7,15 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).parent
 CWD = Path.cwd()
 
-# Credentials stored in current working directory (per-project)
+# Credentials: client secrets per-project, token global in ~/.config/seo/
 CLIENT_SECRETS_FILE = CWD / ".client_secrets.json"
-TOKEN_FILE = CWD / ".token.json"
+TOKEN_FILE = Path.home() / ".config" / "seo" / "token.json"
 REPORTS_DIR = CWD / "reports" / "seo"
 SCOPES = [
     "https://www.googleapis.com/auth/webmasters",       # Search Console
     "https://www.googleapis.com/auth/analytics.edit",   # GA Admin API (create properties)
+    "https://www.googleapis.com/auth/analytics.readonly",  # GA4 Data API (read reports)
+    "https://www.googleapis.com/auth/siteverification", # Site Verification API (verify command)
 ]
 
 # Site configuration
@@ -84,8 +86,8 @@ def check_dependencies():
     return True
 
 
-OP_CLIENT_SECRETS_REF = "op://dev/seo-google-client-secrets/json"
-OP_TOKEN_REF = "op://dev/seo-google-token/json"
+OP_CLIENT_SECRETS_REF = "op://infra/2woumqmg4y7vq55nf6e4o2qj2y/json"
+OP_TOKEN_REF = "op://infra/4p77rxpejqgnsr5tp2kfjf4fr4/json"
 
 
 def _load_client_secrets_file():
@@ -171,6 +173,7 @@ def get_credentials():
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
+            TOKEN_FILE.parent.mkdir(parents=True, exist_ok=True)
             with open(TOKEN_FILE, "w") as f:
                 f.write(creds.to_json())
         else:
