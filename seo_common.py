@@ -18,9 +18,18 @@ SCOPES = [
     "https://www.googleapis.com/auth/siteverification", # Site Verification API (verify command)
 ]
 
-# Site configuration
+# Site configuration — defaults, overridable per-project by a `.seo.json`
+# in the working directory:
+#   {"site_url": "sc-domain:example.com",
+#    "sitemap_url": "https://www.example.com/sitemap.xml"}
 SITE_URL = "sc-domain:bayareapolishgroup.com"
 SITEMAP_URL = "https://www.bayareapolishgroup.com/sitemap.xml"
+
+_SEO_CONFIG_FILE = CWD / ".seo.json"
+if _SEO_CONFIG_FILE.exists():
+    _cfg = json.loads(_SEO_CONFIG_FILE.read_text())
+    SITE_URL = _cfg.get("site_url", SITE_URL)
+    SITEMAP_URL = _cfg.get("sitemap_url", SITEMAP_URL)
 
 # Google Cloud Console URLs
 GOOGLE_CLOUD_CONSOLE = "https://console.cloud.google.com/"
